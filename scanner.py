@@ -2,6 +2,8 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor
 import time
 import threading
+from nessusClient import NessusClient
+from dockerClient import DockerClient
 
 
 parser = argparse.ArgumentParser()
@@ -10,14 +12,41 @@ parser.add_argument('-m', '--image', type=str)
 parser.add_argument('ips', type=argparse.FileType('r'))
 args = parser.parse_args()
 
+docker = DockerClient(args.image)
 
 def scanning(ipsGroup):
-    threadName = threading.get_native_id()
-    print(f'i\'m Mr. meeseeks number {threadName} look at me!!!! i\'m going to scan this {ipsGroup}')
-    time.sleep(10)
-    print(f'finish, bye. atte Mr. meeseeks number {threadName}')
+    print('[+] Starting thread with ips:', ','.join(ipsGroup))
+    container  = docker.start(8888)
+    print(f'[+] Container ID: {container.id}')
+    try:
+        nessus = NessusClient(8888)
+    except Exception as e:
+        print(e)
 
-def divideGroups(ips, large):
+    time.sleep(10)
+
+    while True:
+        try:
+            nessus.start_session('nessus', 'nessus')
+            print(f'[+] Connected')
+            break
+        except Exception as e:
+            print(f"[-] {e}, retry in 30 seconds")
+            time.sleep(30)
+
+    
+    print(f'[+] Start Scan')
+    response = nessus.scan(ipsGroup)
+    print(response)
+    while True:
+        time.sleep(60)
+        if nessus.is_finish():
+            nessus.export()
+            break
+        else:
+            print(nessus.status())
+
+def divide_groups(ips, large):
     while ips:
       yield ips[:large]
       del ips[:large]
@@ -27,7 +56,7 @@ def divideGroups(ips, large):
 ips = [line.strip() for line in args.ips.readlines()]
 
 executor = ThreadPoolExecutor(max_workers=4,thread_name_prefix="nessus")
-for ipsGroup in divideGroups(ips,2):
+for ipsGroup in divide_groups(ips,2):
     executor.submit(scanning,ipsGroup)
 
 
