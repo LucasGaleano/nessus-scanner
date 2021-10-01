@@ -15,15 +15,18 @@ args = parser.parse_args()
 docker = DockerClient(args.image)
 
 def scanning(ipsGroup):
-    print('[+] Starting thread with ips:', ','.join(ipsGroup))
-    container  = docker.start(8888)
-    print(f'[+] Container ID: {container.id}')
+
+    port = 8888
+    
     try:
-        nessus = NessusClient(8888)
+        print('[+] Starting thread with ips:', ','.join(ipsGroup))
+        container  = docker.start(port) #run a container
+        print(f'[+] Container ID: {container.id}')
+        nessus = NessusClient(port)
     except Exception as e:
         print(e)
 
-    time.sleep(10)
+    time.sleep(10) #wait for nessus
 
     while True:
         try:
@@ -36,15 +39,16 @@ def scanning(ipsGroup):
 
     
     print(f'[+] Start Scan')
-    response = nessus.scan(ipsGroup)
+    response = nessus.scan(ipsGroup) #run scan
     print(response)
-    while True:
+
+    while not nessus.is_finish():  #wait for the scan to end
         time.sleep(60)
-        if nessus.is_finish():
-            nessus.export()
-            break
-        else:
-            print(nessus.status())
+        print(nessus.status())
+
+    nessus.export() #download report
+
+            
 
 def divide_groups(ips, large):
     while ips:

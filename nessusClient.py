@@ -9,16 +9,15 @@ s = requests.Session()
 
 @dataclass
 class NessusClient:
-    _token: str = field(init=False)
     _port: int
-    _scanId: str = field(init=False)
+    _token: str = ""
+    _scanId: str = ''
 
     def make_post_request(self, path, data):
-        return s.post(f'{url}:{self._port}{path}', data=data, verify=False)
+        return s.post(f'{url}:{self._port}{path}', headers={"X-Cookie":f'token={self._token}'}, data=data, verify=False)
 
     def make_get_request(self, path):
-        return s.get(f'{url}:{self._port}{path}', verify=False)
-        
+        return s.get(f'{url}:{self._port}{path}', headers={"X-Cookie":f'token={self._token}'}, verify=False)
 
     def start_session(self, username, password):
         response = self.make_post_request('/session', {'username':username,'password':password})
@@ -30,18 +29,20 @@ class NessusClient:
         
     def scan(self, ips: list):
         response = self.make_post_request('/scans', {
+            "uuid": "ad629e16-03b6-8c1d-cef6-ef8c9dd3c658d24bd260ef5f9e66",
             "settings": {
                 "name": "test",
+                "enabled": "true",
                 "description": "description test",
                 "settings.text_targets":','.join(ips),
                 "launch": "ON_DEMAND",
                 "policy_id": 4,
+                "agent_group_id": []
             }
         })
 
         if response.ok:
             self._scanId = response.json().id
-            return response.text
         return response.text
 
 
@@ -57,8 +58,6 @@ class NessusClient:
         
 
 # X-Cookie: token={token};
-
-
 # print(session('nessus', 'nessus'))
 #start_scan([1])
 #print(s.cookies)

@@ -10,11 +10,8 @@ class DockerClient:
         client = docker.from_env()
         print(client)
         print('[+] start container', self.image)
-        try:
-            container = client.containers.run(self.image, detach=True, auto_remove=True, ports={'8834/tcp': port})
-        except Exception as e:
-            print(e)
-        
+        container = client.containers.run(self.image, detach=True, auto_remove=True, ports={'8834/tcp': port})
+        print('[+] container started', self.image)
         return container
 
 
